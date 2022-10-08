@@ -2,8 +2,9 @@ import asyncio
 from functools import wraps
 
 from lasier.types import Timeout
-
+from ..adapters.caches import CgRedisAdapter
 from .base import CircuitBreakerBase
+from quart import current_app as app
 
 
 class CircuitBreaker(CircuitBreakerBase):
@@ -38,14 +39,16 @@ class CircuitBreaker(CircuitBreakerBase):
         self._notify_open_circuit()
 
     async def __aenter__(self):
+        self.cache = CgRedisAdapter(app.redis)
         if await self.is_circuit_open():
             raise self.failure_exception
 
         return self
 
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        await self._increase_request_count()
-        if self._is_catchable_exception(exc_type):
+    async def exit(self, exc_type=None, status_code=None):
+        if self._is_catchable_exception(exc_type) or self._is_catchable_status(
+            status_code
+        ):
             await self._increase_failure_count()
 
             total_failures, total_requests = await asyncio.gather(
@@ -59,10 +62,16 @@ class CircuitBreaker(CircuitBreakerBase):
                 self._notify_max_failures_exceeded()
                 raise self.failure_exception
 
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self._increase_request_count()
+        await self.exit(exc_type=exc_type)
+
     def __call__(self, func):
         @wraps(func)
         async def inner(*args, **kwargs):
             async with self:
+                res = await func(*args, **kwargs)
+                await self.exit(status_code=res.status_code)
                 return await func(*args, **kwargs)
 
         return inner

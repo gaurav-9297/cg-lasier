@@ -14,25 +14,32 @@ class CircuitBreakerBase:
     def __init__(
         self,
         rule: BaseRule,
-        cache: Any,
+        # cache: Any,
         failure_exception: Type[Exception],
         failure_timeout: Timeout = _ONE_MINUTE,
         circuit_timeout: Timeout = _ONE_MINUTE,
         catch_exceptions: Optional[Iterable[Type[Exception]]] = None,
+        catch_status: Optional[Iterable[Type[int]]] = None,
     ) -> None:
         self.rule = rule
-        self.cache = cache
+        # self.cache = cache
         self.failure_timeout = failure_timeout
         self.circuit_timeout = circuit_timeout
         self.circuit_cache_key = 'circuit_{}'.format(rule.failure_cache_key)
         self.failure_exception = failure_exception
         self.catch_exceptions = catch_exceptions or (Exception,)
+        self.catch_status = catch_status
 
     def _is_catchable_exception(self, exception: Type[Exception]) -> bool:
         return inspect.isclass(exception) and any(
             issubclass(exception, exception_class)
             for exception_class in self.catch_exceptions
         )
+
+    def _is_catchable_status(self, status_code: int) -> bool:
+        if self.catch_status and status_code in self.catch_status:
+            return True
+        return False
 
     def _notify_open_circuit(self) -> None:
         logger.critical(
