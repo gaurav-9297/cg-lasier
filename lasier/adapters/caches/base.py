@@ -40,8 +40,10 @@ class AsyncCacheAdapterBase(_CacheAdapterMixin):
     async def add(self, key: str, value: int, timeout: Timeout = None) -> None:
         await self.cache.add(key, value, timeout)
 
-    async def set(self, key: str, value: int, timeout: Timeout = None) -> None:
-        await self.cache.set(key, value, timeout)
+    async def set(
+        self, key: str, value: int, timeout: Timeout = None, exist=None
+    ) -> None:
+        await self.cache.set(key, value, timeout, exist)
 
     async def incr(self, key: str) -> int:
         return await self.cache.incr(key)
