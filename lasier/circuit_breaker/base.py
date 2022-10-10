@@ -20,6 +20,7 @@ class CircuitBreakerBase:
         circuit_timeout: Timeout = _ONE_MINUTE,
         catch_exceptions: Optional[Iterable[Type[Exception]]] = None,
         catch_status: Optional[Iterable[Type[int]]] = None,
+        success_threshold=3,
     ) -> None:
         self.rule = rule
         # self.cache = cache
@@ -29,6 +30,10 @@ class CircuitBreakerBase:
         self.failure_exception = failure_exception
         self.catch_exceptions = catch_exceptions or (Exception,)
         self.catch_status = catch_status
+        self.state_key = f'state_{rule.request_cache_key}'
+        self.state = "closed"
+        self.success_threshold = success_threshold  # no. of success requests when state=half-open to close the circuit
+        self.success_counter_key = f'success_{rule.request_cache_key}'
 
     def _is_catchable_exception(self, exception: Type[Exception]) -> bool:
         return inspect.isclass(exception) and any(
