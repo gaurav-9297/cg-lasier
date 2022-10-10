@@ -13,16 +13,13 @@ STATE_HALF_OPEN = "half-open"
 
 class CircuitBreaker(CircuitBreakerBase):
     async def is_circuit_open(self) -> bool:
-        if self.cache.get(self.circuit_cache_key):
-            return True
-
-        await self.set_half_open_state()
-        return False
+        return await self.cache.get(self.circuit_cache_key) or False
 
     async def set_half_open_state(self):
         self.state = STATE_HALF_OPEN
-        self.set_circuit_state(self.state)
-        self.cache.add(self.success_counter_key, 0)
+        await self.set_circuit_state(self.state)
+        await self.cache.add(self.success_counter_key, 0)
+        self._notify_half_open_circuit()
 
     async def get_total_failures(self) -> int:
         return await self.cache.get(self.rule.failure_cache_key) or 0
@@ -41,6 +38,7 @@ class CircuitBreaker(CircuitBreakerBase):
 
     async def open_circuit(self) -> None:
         self.state = STATE_OPEN
+        await self.set_circuit_state(self.state)
         await self.cache.set(self.circuit_cache_key, 1, self.circuit_timeout)
 
         # Delete the cache key to mitigate multiple sequentials openings
@@ -61,28 +59,30 @@ class CircuitBreaker(CircuitBreakerBase):
     async def half_open_circuit(self, success=False) -> None:
         if not success:
             await self.open_circuit()
-            self.cache.delete(self.success_counter_key)
+            await self.cache.delete(self.success_counter_key)
             self._notify_max_failures_exceeded()
             raise self.failure_exception
 
         else:
-            self.cache.incr(self.success_counter_key)
+            await self.cache.incr(self.success_counter_key)
             if (
-                self.cache.get(self.success_counter_key)
+                await self.cache.get(self.success_counter_key)
                 >= self.success_threshold
             ):
                 self.state = STATE_CLOSED
-                self.set_circuit_state(self.state)
-                self.cache.delete(self.success_counter_key)
+                await self.set_circuit_state(self.state)
+                await self.cache.delete(self.success_counter_key)
+                self._notify_closed_circuit()
 
     async def __aenter__(self):
         self.cache = CgRedisAdapter(app.redis)
         self.state = await self.get_circuit_state()
-
+        app.logger.info(f"{self.state_key}-{self.state}")
         if self.state == STATE_OPEN:
             if await self.is_circuit_open():
                 raise self.failure_exception
-
+            else:
+                await self.set_half_open_state()
         return self
 
     async def exit(self, exc_type=None, status_code=None):

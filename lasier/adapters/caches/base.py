@@ -9,7 +9,10 @@ class _CacheAdapterMixin:
 
     def _convert_to_int(self, value: Optional[str]) -> Optional[int]:
         if value is not None:
-            return int(value)
+            try:
+                return int(value)
+            except ValueError:
+                return value
         return None
 
 

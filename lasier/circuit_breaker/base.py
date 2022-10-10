@@ -52,5 +52,17 @@ class CircuitBreakerBase:
             f'{self.circuit_cache_key}'
         )
 
+    def _notify_half_open_circuit(self) -> None:
+        logger.critical(
+            f'Half-Open circuit for {self.rule.failure_cache_key} '
+            f'{self.circuit_cache_key}'
+        )
+
+    def _notify_closed_circuit(self) -> None:
+        logger.critical(
+            f'Closed circuit for {self.rule.failure_cache_key} '
+            f'{self.circuit_cache_key}'
+        )
+
     def _notify_max_failures_exceeded(self) -> None:
         logger.info(f'Max failures exceeded by: {self.rule.failure_cache_key}')
