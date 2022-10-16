@@ -45,10 +45,10 @@ class PercentageFailuresRule(BaseRule):
             total_failures=total_failures, total_requests=total_requests
         )
         logger.info(
-            f'Increase failure for: {self.failure_cache_key} - '
-            f'max failures {self.max_failures_percentage}% - '
-            f'total failures {total_failures} - '
-            f'min accepted requests {self.min_accepted_requests} - '
-            f'total requests {total_requests} - '
-            f'percentage failures {percentage_failures}%'
+            f'Increase failure for: {self.failure_cache_key},\n '
+            f'min accepted: requests {self.min_accepted_requests}, \n'
+            f'max failures: {self.max_failures_percentage}%, \n'
+            f'total requests: {total_requests}, \n'
+            f'total failures: {total_failures},\n'
+            f'percentage failures: {percentage_failures}%'
         )

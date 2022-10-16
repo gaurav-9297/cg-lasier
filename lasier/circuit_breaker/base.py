@@ -8,6 +8,7 @@ from .rules.base import BaseRule
 
 logger = logging.getLogger(__name__)
 _ONE_MINUTE = 60
+_ONE_HOUR = 3600
 
 
 class CircuitBreakerBase:
@@ -16,8 +17,8 @@ class CircuitBreakerBase:
         rule: BaseRule,
         # cache: Any,
         failure_exception: Type[Exception],
-        failure_timeout: Timeout = _ONE_MINUTE,
-        circuit_timeout: Timeout = _ONE_MINUTE,
+        failure_timeout: Timeout = _ONE_HOUR,
+        circuit_timeout: Timeout = _ONE_HOUR,
         catch_exceptions: Optional[Iterable[Type[Exception]]] = None,
         catch_status: Optional[Iterable[Type[int]]] = None,
         success_threshold=3,
@@ -54,15 +55,11 @@ class CircuitBreakerBase:
 
     def _notify_half_open_circuit(self) -> None:
         logger.critical(
-            f'Half-Open circuit for {self.rule.failure_cache_key} '
-            f'{self.circuit_cache_key}'
+            f'Half-Open circuit for {self.rule.request_cache_key} '
         )
 
     def _notify_closed_circuit(self) -> None:
-        logger.critical(
-            f'Closed circuit for {self.rule.failure_cache_key} '
-            f'{self.circuit_cache_key}'
-        )
+        logger.critical(f'Closed circuit for {self.rule.request_cache_key} ')
 
     def _notify_max_failures_exceeded(self) -> None:
         logger.info(f'Max failures exceeded by: {self.rule.failure_cache_key}')

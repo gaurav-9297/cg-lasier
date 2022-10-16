@@ -146,15 +146,20 @@ class CircuitBreaker(CircuitBreakerBase):
         ):
             return
 
+        elif self.state!=STATE_HALF_OPEN:
+            
+            # To calculate the exact percentage, the cache of requests and the
+            # cache of failures must expire at the same time.
+            if self.rule.should_increase_failure_count():
+                await self.cache.add(self.rule.failure_cache_key, 0, self.failure_timeout)
+        
+        if not await self.cache.get(self.rule.request_cache_key):
+            await self.cache.add(self.rule.request_cache_key, 0, self.failure_timeout)
+            
         await self._incr(
-            self.rule.request_cache_key, self.failure_timeout  # type: ignore
-        )
-        # To calculate the exact percentage, the cache of requests and the
-        # cache of failures must expire at the same time.
-        if self.rule.should_increase_failure_count():
-            await self.cache.add(
-                self.rule.failure_cache_key, 0, self.failure_timeout
+                self.rule.request_cache_key, self.failure_timeout  # type: ignore
             )
+
 
     async def _incr(self, key: str, timeout: Timeout) -> int:
         value = await self.cache.incr(key)
